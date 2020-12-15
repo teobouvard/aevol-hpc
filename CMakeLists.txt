@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.13)
-project(pdc_mini_aevol)
+project(micro_aevol)
 
 set(CMAKE_CXX_STANDARD 14)
 
@@ -18,7 +18,7 @@ if ( USE_CUDA )
         set(CMAKE_CUDA_STANDARD 14)
         set(CMAKE_CUDA_STANDARD_REQUIRED ON)
         set(CMAKE_CUDA_FLAGS "-arch=compute_60")
-        set(CMAKE_CUDA_FLAGS_DEBUG "-Xcompiler -rdynamic -lineinfo")
+        set(CMAKE_CUDA_FLAGS_DEBUG "-Xcompiler -Wall -Wpedantic -rdynamic -lineinfo")
     else()
         message(FATAL_ERROR "No CUDA support found")
     endif()
@@ -30,16 +30,17 @@ endif ( USE_OMP )
 
 find_package(ZLIB REQUIRED)
 
+include_directories(include)
 add_library(micro_aevol
-        Abstract_ExpManager.cpp
-        ExpManager.cpp
-        AeTime.cpp
-        DnaMutator.cpp
-        MutationEvent.cpp
-        Organism.cpp
-        Stats.cpp
-        Threefry.cpp
-        Dna.cpp)
+        src/Abstract_ExpManager.cpp
+        src/ExpManager.cpp
+        src/AeTime.cpp
+        src/DnaMutator.cpp
+        src/MutationEvent.cpp
+        src/Organism.cpp
+        src/Stats.cpp
+        src/Threefry.cpp
+        src/Dna.cpp)
 
 target_link_libraries(micro_aevol PUBLIC ZLIB::ZLIB)
 
@@ -49,11 +50,12 @@ if ( OPENMP_FOUND )
 endif ()
 
 if ( USE_CUDA )
-    add_subdirectory(cuda)
-    add_executable(micro_aevol_gpu main.cpp)
+    include_directories(include/cuda)
+    add_subdirectory(src/cuda)
+    add_executable(micro_aevol_gpu src/main.cpp)
     # nvToolsExt for enhanced profiling (ad-hoc chunks)
     target_link_libraries(micro_aevol_gpu PUBLIC cuda_micro_aevol micro_aevol nvToolsExt)
 else ()
-    add_executable(micro_aevol_cpu main.cpp)
+    add_executable(micro_aevol_cpu src/main.cpp)
     target_link_libraries(micro_aevol_cpu micro_aevol)
 endif ()
