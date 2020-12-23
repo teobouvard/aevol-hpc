@@ -26,9 +26,15 @@
 //
 // ****************************************************************************
 
+#include <chrono>
 #include <cstring>
 #include <getopt.h>
 #include <iostream>
+#include <stdlib.h>
+
+#ifdef USE_OMP
+#include <omp.h>
+#endif
 
 #ifdef USE_CUDA
 #include "cuda/cuExpManager.h"
@@ -174,7 +180,7 @@ int main(int argc, char *argv[]) {
     }
     default: {
       // An error message is printed in getopt_long, we just need to exit
-      printf("Error unknown parameter\n");
+      fprintf(stderr, "Error unknown parameter\n");
       exit(EXIT_FAILURE);
     }
     }
@@ -184,13 +190,14 @@ int main(int argc, char *argv[]) {
   printf("Activate CUDA\n");
 #endif
 
-  printf("Start ExpManager\n");
+  fprintf(stderr, "Start ExpManager\n");
 
   if (resume >= 0) {
     if ((width != -1) || (height != -1) || (mutation_rate != -1.0) ||
         (genome_size != -1) || (backup_step != -1) || (seed != -1)) {
-      printf("Parameter(s) can not change during the simulation (i.e. when "
-             "resuming a simulation, parameter(s) can not change)\n");
+      fprintf(stderr,
+              "Parameter(s) can not change during the simulation (i.e. when "
+              "resuming a simulation, parameter(s) can not change)\n");
       exit(EXIT_FAILURE);
     }
     if (nbstep == -1)
@@ -229,7 +236,14 @@ int main(int argc, char *argv[]) {
   delete tmp;
 #endif
 
+  auto t1 = std::chrono::high_resolution_clock::now();
   exp_manager->run_evolution(nbstep);
+  auto t2 = std::chrono::high_resolution_clock::now();
+
+  auto duration =
+      std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
+  printf("%s,%d,%d,%f,%d,%ld\n", std::getenv("OMP_NUM_THREADS"), height, width,
+         mutation_rate, genome_size, duration);
 
   delete exp_manager;
 

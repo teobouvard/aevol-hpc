@@ -1,7 +1,8 @@
-gen:
+setup:
 	cmake -S . -B build -DUSE_OMP=1 -DCMAKE_BUILD_TYPE=Debug
+	mkdir -p experiments/sim_0
 
-build: gen
+build: setup
 	cmake --build build
 
 run: build
@@ -9,6 +10,9 @@ run: build
 
 clean:
 	rm -rf build
+
+benchmark-cpu: build
+	bash benchmarks/benchmark.sh ./build/micro_aevol_cpu > benchmarks/results_cpu.csv 2>/dev/null
 
 test:
 	echo "TODO"

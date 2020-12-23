@@ -28,6 +28,7 @@
 // ***************************************************************************************************************
 
 #include <iostream>
+#include <stdio.h>
 #include <zlib.h>
 
 using namespace std;
@@ -103,7 +104,7 @@ ExpManager::ExpManager(int grid_height, int grid_width, int seed,
                        (2 * (double)FUZZY_SAMPLING));
   }
 
-  printf("Initialized environmental target %f\n", geometric_area);
+  fprintf(stderr, "Initialized environmental target %f\n", geometric_area);
 
   // Initializing the PRNGs
   for (int indiv_id = 0; indiv_id < nb_indivs_; ++indiv_id) {
@@ -124,7 +125,7 @@ ExpManager::ExpManager(int grid_height, int grid_width, int seed,
         round((random_organism->metaerror - geometric_area) * 1E10) / 1E10;
   }
 
-  printf("Populating the environment\n");
+  fprintf(stderr, "Populating the environment\n");
 
   // Create a population of clones based on the randomly generated organism
   for (int indiv_id = 0; indiv_id < nb_indivs_; indiv_id++) {
@@ -154,7 +155,7 @@ ExpManager::ExpManager(int time) {
                        (2 * (double)FUZZY_SAMPLING));
   }
 
-  printf("Initialized environmental target %f\n", geometric_area);
+  fprintf(stderr, "Initialized environmental target %f\n", geometric_area);
 
   dna_mutator_array_ = new DnaMutator *[nb_indivs_];
   for (int indiv_id = 0; indiv_id < nb_indivs_; ++indiv_id) {
@@ -210,7 +211,7 @@ void ExpManager::save(int t) const {
   rng_->save(exp_backup_file);
 
   if (gzclose(exp_backup_file) != Z_OK) {
-    cerr << "Error while closing backup file" << endl;
+    fprintf(stderr, "Error while closing backup file\n");
   }
 }
 
@@ -234,7 +235,8 @@ void ExpManager::load(int t) {
   // Check that files were correctly opened
   // -------------------------------------------------------------------------
   if (exp_backup_file == Z_NULL) {
-    printf("Error: could not open backup file %s\n", exp_backup_file_name);
+    fprintf(stderr, "Error: could not open backup file %s\n",
+            exp_backup_file_name);
     exit(EXIT_FAILURE);
   }
 
@@ -372,8 +374,8 @@ void ExpManager::prepare_mutation(int indiv_id) const {
  */
 void ExpManager::run_a_step() {
 
-  // Running the simulation process for each organism
-  //#pragma omp parallel for
+// Running the simulation process for each organism
+#pragma omp parallel for schedule(guided)
   for (int indiv_id = 0; indiv_id < nb_indivs_; indiv_id++) {
     selection(indiv_id);
     prepare_mutation(indiv_id);
@@ -436,16 +438,16 @@ void ExpManager::run_evolution(int nb_gen) {
   stats_best = new Stats(AeTime::time(), true);
   stats_mean = new Stats(AeTime::time(), false);
 
-  printf("Running evolution from %d to %d\n", AeTime::time(),
-         AeTime::time() + nb_gen);
+  fprintf(stderr, "Running evolution from %d to %d\n", AeTime::time(),
+          AeTime::time() + nb_gen);
 
   for (int gen = 0; gen < nb_gen; gen++) {
     AeTime::plusplus();
 
     TIMESTAMP(1, run_a_step();)
 
-    printf("Generation %d : Best individual fitness %e\n", AeTime::time(),
-           best_indiv->fitness);
+    fprintf(stderr, "Generation %d : Best individual fitness %e\n",
+            AeTime::time(), best_indiv->fitness);
     FLUSH_TRACES(gen)
 
     for (int indiv_id = 0; indiv_id < nb_indivs_; ++indiv_id) {
@@ -455,7 +457,7 @@ void ExpManager::run_evolution(int nb_gen) {
 
     if (AeTime::time() % backup_step_ == 0) {
       save(AeTime::time());
-      cout << "Backup for generation " << AeTime::time() << " done !" << endl;
+      fprintf(stderr, "Backup for generation %d done\n", AeTime::time());
     }
   }
   STOP_TRACER

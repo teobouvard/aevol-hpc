@@ -3,6 +3,10 @@ project(micro_aevol)
 
 set(CMAKE_CXX_STANDARD 14)
 
+# more warnings 
+# can't use -Werror because Threefry is full of garbage
+add_compile_options(-Wall -Wextra -pedantic)
+
 if ( DO_TRACES )
     add_definitions(-DTRACES)
     message( STATUS "Traces are activated" )

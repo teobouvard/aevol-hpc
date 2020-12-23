@@ -1,5 +1,7 @@
 .vscode
 build
 experiments
+stats
 *.gz
 *.pdf
+*.zae
