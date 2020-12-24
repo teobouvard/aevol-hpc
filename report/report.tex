@@ -14,6 +14,7 @@
     urlcolor=cyan,
 }
 
+
 \begin{document}
 
 \title{High Performance Computing - Micro Aevol}
@@ -21,11 +22,22 @@
 \maketitle
 
 \section{Introduction}
+
 \section{Version CPU}
+
 \subsection{Analyse}
-Afin de se familiariser avec le code, il est intéressant de profiler son exécution. Cela permet d'identifier la structure globale du programme ainsi que son chemin critique. Dans le cas d'Aevol, on remarque que la fonction \textit{run\_a\_step} est exécutée pour chaque époque, dont le nombre d'itérations est spécifiée par l'argument \textit{n\_steps}.
-Dans cette fonction, les différentes étapes du modèle biologique sont exécutées successivement pour chaque organisme. Toutes les étapes de ce modèle sont indépendantes pour chaque organisme sauf l'étape de sélection qui requiert la lecture de l'état des organismes voisins. Une optimisation naturelle est donc de paralléliser le traitement de chaque organisme\label{parallel/orga}.
-TODO talk about printf
+Afin de se familiariser avec le code, il est intéressant de profiler son exécution. Cela permet d'identifier la structure globale du programme ainsi que son chemin critique. Dans le cas d'Aevol, on remarque que la fonction \textit{run\_a\_step} est exécutée pour chaque pas de temps, dont le nombre d'itérations est spécifié par l'argument \textit{n\_steps}.
+Dans cette fonction, les différentes étapes du modèle biologique sont exécutées successivement pour chaque organisme.
+\subsubsection*{Parallélisation du modèle}
+
+Toutes les étapes de ce modèle sont indépendantes pour chaque organisme sauf l'étape de sélection qui requiert la lecture de l'état des organismes voisins sur la grille. Une optimisation naturelle est donc de paralléliser le traitement de chaque organisme\label{parallel/orga}.
+
+\subsubsection*{Latence du disque}
+
+Une autre simple optimisation est de limiter les appels à \textit{printf}, qui ralentissent l'exécution de manière significative lorsque ces derniers sont très fréquents. En effet, en utilisant les arguments par défaut on diminue de moitié le temps d'exécution en redirigeant la sortie standard ainsi que la sortie d'erreur vers \textit{/dev/null}. Bien évidemment, cette optimisation n'est pas aussi significative lorsque l'on utilise des tailles de problèmes plus élevée, mais il est sage d'éviter des appels systèmes coûteux lorsqu'ils ne sont pas nécessaires. Une alternative à la redirection des stream serait d'ajouter un argument permettant de contrôler la verbosité du programme, et ainsi s'affranchir du coût de tous ces appels systèmes lors d'une exécution en mode silencieux.
+
+De manière similaire, les écritures dans les fichiers de statistiques invoquant \textit{std::endl} ou \textit{std::flush} imposent la synchronisation des flux de sortie, ce qui peut avoir un coût d'appel système assez élevé lié à la lenteur de l'écriture sur disque. Une meilleure solution serait de stocker les statistiques en mémoire jusqu'au point de backup, et de les écrires dans des fichiers en batch, ce qui améliorerait le buffering déja proposé par l'OS.
+
 \subsection{Implémentation}
 \hyperref[parallel/orga]{Parallélisation du cycle d'évolution}
 

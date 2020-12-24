@@ -1,5 +1,5 @@
 setup:
-	cmake -S . -B build -DUSE_OMP=1 -DCMAKE_BUILD_TYPE=Debug
+	cmake -S . -B build -DUSE_OMP=1 -DCMAKE_BUILD_TYPE=Release
 	mkdir -p experiments/sim_0
 
 build: setup
@@ -12,7 +12,7 @@ clean:
 	rm -rf build
 
 benchmark-cpu: build
-	bash benchmarks/benchmark.sh ./build/micro_aevol_cpu > benchmarks/results_cpu.csv 2>/dev/null
+	bash benchmarks/benchmark.sh ./build/micro_aevol_cpu
 
 test:
 	echo "TODO"
