@@ -370,12 +370,11 @@ void ExpManager::prepare_mutation(int indiv_id) const {
 
 /**
  * Execute a generation of the simulation for all the Organisms
- *
  */
 void ExpManager::run_a_step() {
-
-// Running the simulation process for each organism
-#pragma omp parallel for schedule(guided)
+  // Running the simulation process for each organism
+  // using static scheduling as mutation are random among organisms
+#pragma omp parallel for schedule(static)
   for (int indiv_id = 0; indiv_id < nb_indivs_; indiv_id++) {
     selection(indiv_id);
     prepare_mutation(indiv_id);
@@ -388,6 +387,9 @@ void ExpManager::run_a_step() {
   }
 
   // Swap Population
+  // we use a static schedule as all iterations do the same 2 operations so
+  // processing time should be ~equal
+#pragma omp parallel for schedule(static)
   for (int indiv_id = 0; indiv_id < nb_indivs_; indiv_id++) {
     prev_internal_organisms_[indiv_id] = internal_organisms_[indiv_id];
     internal_organisms_[indiv_id] = nullptr;
@@ -396,6 +398,7 @@ void ExpManager::run_a_step() {
   // Search for the best
   double best_fitness = prev_internal_organisms_[0]->fitness;
   int idx_best = 0;
+#pragma omp parallel for schedule(static)
   for (int indiv_id = 1; indiv_id < nb_indivs_; indiv_id++) {
     if (prev_internal_organisms_[indiv_id]->fitness > best_fitness) {
       idx_best = indiv_id;
@@ -408,11 +411,13 @@ void ExpManager::run_a_step() {
   stats_best->reinit(AeTime::time());
   stats_mean->reinit(AeTime::time());
 
+#pragma omp parallel for schedule(static)
   for (int indiv_id = 0; indiv_id < nb_indivs_; indiv_id++) {
     if (dna_mutator_array_[indiv_id]->hasMutate())
       prev_internal_organisms_[indiv_id]->compute_protein_stats();
   }
 
+  // TODO try removing those calls
   stats_best->write_best(best_indiv);
   stats_mean->write_average(prev_internal_organisms_, nb_indivs_);
 }
@@ -425,13 +430,15 @@ void ExpManager::run_a_step() {
 void ExpManager::run_evolution(int nb_gen) {
   INIT_TRACER("trace.csv", {"FirstEvaluation", "STEP"});
 
-  TIMESTAMP(0, {
-    for (int indiv_id = 0; indiv_id < nb_indivs_; indiv_id++) {
-      internal_organisms_[indiv_id]->locate_promoters();
-      prev_internal_organisms_[indiv_id]->evaluate(target);
-      prev_internal_organisms_[indiv_id]->compute_protein_stats();
-    }
-  });
+  // commenting the macro as it prevents openmp from preprocessing
+  // TIMESTAMP(0, {
+#pragma omp parallel for schedule(static)
+  for (int indiv_id = 0; indiv_id < nb_indivs_; indiv_id++) {
+    internal_organisms_[indiv_id]->locate_promoters();
+    prev_internal_organisms_[indiv_id]->evaluate(target);
+    prev_internal_organisms_[indiv_id]->compute_protein_stats();
+  }
+  // });
   FLUSH_TRACES(0)
 
   // Stats
@@ -450,6 +457,7 @@ void ExpManager::run_evolution(int nb_gen) {
             AeTime::time(), best_indiv->fitness);
     FLUSH_TRACES(gen)
 
+#pragma omp parallel for schedule(static)
     for (int indiv_id = 0; indiv_id < nb_indivs_; ++indiv_id) {
       delete dna_mutator_array_[indiv_id];
       dna_mutator_array_[indiv_id] = nullptr;

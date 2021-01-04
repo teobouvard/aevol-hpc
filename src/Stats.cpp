@@ -258,8 +258,7 @@ void Stats::write_best(const std::shared_ptr<Organism> &best) {
                    << "," << amount_of_dna_ << "," << nb_coding_rnas_ << ","
                    << nb_non_coding_rnas_ << "," << nb_functional_genes_ << ","
                    << nb_non_functional_genes_ << "," << nb_mut_ << ","
-                   << nb_switch_ << std::endl;
-    statfile_best_.flush();
+                   << nb_switch_ << "\n";
   }
 }
 
@@ -279,8 +278,7 @@ void Stats::write_average(const std::shared_ptr<Organism> *population,
                    << mean_nb_coding_rnas_ << "," << mean_nb_non_coding_rnas_
                    << "," << mean_nb_functional_genes_ << ","
                    << mean_nb_non_functional_genes_ << "," << mean_nb_mut_
-                   << "," << mean_nb_switch_ << std::endl;
-    statfile_mean_.flush();
+                   << "," << mean_nb_switch_ << "\n";
   }
 }
 
