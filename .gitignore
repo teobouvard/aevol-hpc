@@ -1,7 +1,9 @@
 .vscode
+.ipynb_checkpoints
 build
 experiments
 stats
 *.gz
 *.pdf
 *.zae
+
