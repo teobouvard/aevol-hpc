@@ -19,4 +19,4 @@ test:
 
 profile-cpu: build
 cd experiments/sim_0 && perf record -o - -g -- ../../build/micro_aevol_cpu -h 128 -w 128 | perf script | c++filt | gprof2dot -f perf | dot -Tsvg -o profile.svg
-#cd experiments/sim_0 && perf record -o - -g -- ../../build/micro_aevol_cpu -h 128 -w 128 | perf script | c++filt | gprof2dot -f perf | dot -Tps -o profile.eps
+#cd experiments/sim_0 && perf record -o - -g -- ../../build/micro_aevol_cpu -h 128 -w 128 | perf script | c++filt | gprof2dot -f perf | dot -Tpdf -o profile.pdf
