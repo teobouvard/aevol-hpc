@@ -77,6 +77,8 @@ cuExpManager::~cuExpManager() {
 }
 
 void cuExpManager::run_a_step() {
+  // if using 32*32 block dimensions, there are much more than 64 threads per
+  // block
   auto threads_per_block = 64; // arbitrary : better if multiple of 32
   // Selection
   dim3 bloc_dim(threads_per_block / 2, threads_per_block / 2);

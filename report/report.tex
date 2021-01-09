@@ -53,6 +53,8 @@ De manière similaire, les écritures dans les fichiers de statistiques invoquan
 
 Dans l'optique de mesurer uniquement l'optimisation de la performance du modèle biologique, les benchmarks qui suivent n'incluent pas le temps d'écriture des fichiers de backup. En effet, cette écriture est réalisée par un seul thread et peut nécéssiter la compression DEFLATE de plusieurs GB de données à l'aide de zlib, ce qui influe de manière significative sur le temps d'exécution du programme. Cependant, c'est un coût qui n'est pas directement lié au modèle biologique que l'on cherche à optimiser, et qui n'est effectué qu'à chaque point de backup. Si l'on souhaitait optimiser cette partie du programme, il serait utile d'utiliser un algorithme de compression plus performant que DEFLATE tels que LZ4 ou zstd.
 
+De manière similaire, le passage à l'échelle n'est mesuré que pour des tailles de problèmes tenant en mémoire. Au delà d'une taille de population supérieure à $512 \times 512$ et d'un génome de taille supérieure à 50000 gènes, la taille des structures de données dépasse la capacité des 32 GB de RAM, et la mesure des temps d'exécution serait influencée par la vitesse du disque utilisé en swap.
+
 Chaque boucle itérant sur l'ensemble des organismes de la simulation est parallélisée à l'aide d'une directive \textit{omp parallel for}, en utilisant un scheduling statique. Ce choix de scheduling provient de l'observation de la répartition des charges de calcul sur les différents organismes.
 
 \begin{itemize}
@@ -64,10 +66,18 @@ Ces deux observations suggèrent que la charge de calcul est répartie de maniè
 
 \begin{figure}
 	\includegraphics[width=\linewidth]{img/benchmark_omp_static.pdf}
-	\caption{Benchmarks de la parallélisation du modèle biologique}
+	\caption{Benchmarks de la parallélisation du modèle biologique à l'aide d'OpenMP}
 \end{figure}
 
 La première observation qui peut être réalisée est que toutes choses étant égales par ailleurs, le temps d'éxécution du programme augmente avec le taux de mutation. Cela s'explique par la phase d'évaluation qui n'est effectuée qu'en cas de mutation. On observe aussi un passage à l'échelle fort de cette parallélisation, car le temps d'exécution est inversement proportionnel au nombre de threads utilisés.
+
+\begin{figure}
+	\centering
+	\includegraphics[width=0.5\linewidth]{img/speedup.pdf}
+	\caption{Speedup de la parallélisation du modèle biologique à l'aide d'OpenMP}
+\end{figure}
+
+Si l'on observe le speedup obtenu pour chaque taille de problème, on remarque une accélération d'un facteur de 5 pour une multiplication par 8 du nombre de threads.
 
 \section{Version GPU}
 
