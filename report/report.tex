@@ -23,6 +23,8 @@
 
 \section{Introduction}
 
+Micro Aevol est une version réduite du modèle biologique Aevol \cite{aevol}, dont l'objectif est d'étudier le processus d'évolution à l'aide de la simulation d'organismes. Cette modèle réduit à pour but d'étudier l'optimisation de la performance du code sous-jacent au modèle.
+
 \section{Version CPU}
 
 Dans cette partie, on étudie l'optimisation la version CPU du code d'Aevol. Le processeur utilisé est un AMD Ryzen 7 3700X avec 32GB de RAM DDR4 à 3200MHz, le code est compilé à l'aide de CMake 3.19.1, g++ 10.2.0 et OpenMP 4.5 (201511).
@@ -67,17 +69,21 @@ Ces deux observations suggèrent que la charge de calcul est répartie de maniè
 \begin{figure}
 	\includegraphics[width=\linewidth]{img/benchmark_omp_static.pdf}
 	\caption{Benchmarks de la parallélisation du modèle biologique à l'aide d'OpenMP}
+	\label{fig:benchmarks/omp}
 \end{figure}
 
-La première observation qui peut être réalisée est que toutes choses étant égales par ailleurs, le temps d'éxécution du programme augmente avec le taux de mutation. Cela s'explique par la phase d'évaluation qui n'est effectuée qu'en cas de mutation. On observe aussi un passage à l'échelle fort de cette parallélisation, car le temps d'exécution est inversement proportionnel au nombre de threads utilisés.
+Sur la figure \ref{fig:benchmarks/omp}, la première observation qui peut être réalisée est que toutes choses étant égales par ailleurs, le temps d'éxécution du programme augmente avec le taux de mutation. Cela s'explique par la phase d'évaluation qui n'est effectuée qu'en cas de mutation. On observe aussi un passage à l'échelle fort de cette parallélisation, car le temps d'exécution est inversement proportionnel au nombre de threads utilisés.
+
+Ce passage à l'échelle est mis en évidence sur la figure \ref{fig:speedup/omp}, qui visualise l'agrégation des speedups des différentes tailles de problème pour un nombre croissant de threads. Ce speedup $S$ est défini par $ S_N = \frac{t_1}{t_N} $, où $N$ représente le nombre de threads et $t$ le temps d'exécution.
 
 \begin{figure}
 	\centering
 	\includegraphics[width=0.5\linewidth]{img/speedup.pdf}
 	\caption{Speedup de la parallélisation du modèle biologique à l'aide d'OpenMP}
+	\label{fig:speedup/omp}
 \end{figure}
 
-Si l'on observe le speedup obtenu pour chaque taille de problème, on remarque une accélération d'un facteur de 5 pour une multiplication par 8 du nombre de threads.
+On remarque une accélération d'un facteur de 5 pour une multiplication par 8 du nombre de threads.
 
 \section{Version GPU}
 

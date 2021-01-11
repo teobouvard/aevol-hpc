@@ -1,3 +1,4 @@
+n_threads,grid_width,grid_height,mutation_rate,genome_size,time
 8,32,32,0.000100,500,134295
 8,32,32,0.000010,500,103040
 8,32,32,0.000001,500,102114
