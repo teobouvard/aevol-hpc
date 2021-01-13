@@ -389,6 +389,8 @@ void ExpManager::run_a_step() {
   // Swap Population
   // we use a static schedule as all iterations do the same 2 operations so
   // processing time should be ~equal
+  // could do simple pointer swap, but I don't have the benchmark machine
+  // available anymore
 #pragma omp parallel for schedule(static)
   for (int indiv_id = 0; indiv_id < nb_indivs_; indiv_id++) {
     prev_internal_organisms_[indiv_id] = internal_organisms_[indiv_id];
