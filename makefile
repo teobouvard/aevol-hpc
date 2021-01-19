@@ -34,4 +34,5 @@ test:
 	echo "TODO"
 
 profile_cpu: build_cpu
-	cd experiments/sim_0 && perf record -o - -g -- ../../build/micro_aevol_cpu -h 128 -w 128 | perf script | c++filt | gprof2dot -f perf | dot -Tpdf -o profile.pdf
+	cd experiments/sim_0 && perf record -g -- ../../build/micro_aevol_cpu -h 128 -w 128
+	cd experiments/sim_0 && perf script | c++filt | grep -E -v "std|__gnu|libc|libz|unknown" | gprof2dot -f perf | dot -Tpdf -o profile.pdf

@@ -34,7 +34,7 @@ Dans cette partie, on étudie l'optimisation la version CPU du code d'Aevol. Le 
 Afin de se familiariser avec le code, il est intéressant de profiler son exécution. Cela permet d'identifier la structure globale du programme ainsi que son chemin critique.
 
 \begin{figure}
-	\includegraphics[width=\linewidth]{img/init_profile_debug.pdf}
+	\includegraphics[width=\linewidth]{img/profile_aevol.pdf}
 	\caption{Profilage de l'application avec les paramètres par défaut à l'aide de \textit{perf}}
 \end{figure}
 
@@ -53,7 +53,14 @@ De manière similaire, les écritures dans les fichiers de statistiques invoquan
 
 \subsection{Implémentation}
 
-Dans l'optique de mesurer uniquement l'optimisation de la performance du modèle biologique, les benchmarks qui suivent n'incluent pas le temps d'écriture des fichiers de backup. En effet, cette écriture est réalisée par un seul thread et peut nécéssiter la compression DEFLATE de plusieurs GB de données à l'aide de zlib, ce qui influe de manière significative sur le temps d'exécution du programme. Cependant, c'est un coût qui n'est pas directement lié au modèle biologique que l'on cherche à optimiser, et qui n'est effectué qu'à chaque point de backup. Si l'on souhaitait optimiser cette partie du programme, il serait utile d'utiliser un algorithme de compression plus performant que DEFLATE tels que LZ4 ou zstd.
+Dans l'optique de mesurer uniquement l'optimisation de la performance du modèle biologique, les benchmarks qui suivent n'incluent pas le temps d'écriture des fichiers de backup. En effet, cette écriture est réalisée par un seul thread et peut nécéssiter la compression DEFLATE de plusieurs GB de données à l'aide de zlib, ce qui influe de manière significative sur le temps d'exécution du programme. Cependant, c'est un coût qui n'est pas directement lié au modèle biologique que l'on cherche à optimiser, et qui n'est effectué qu'à chaque point de backup. Si l'on souhaitait optimiser cette partie du programme, il serait utile d'utiliser un algorithme de compression plus performant que DEFLATE tel que LZ4 ou zstd. Comme on peut l'observer sur la figure \ref{fig:compression/tools}, l'utilisation de zstd 1.4.3 peut multiplier par 4 la vitesse de compression maximale de zlib tout en améliorant le ratio de compression de 36.4\% à 34.7\%. Si l'on se permet de sacrifier de la mémoire pour gagner en performance, on peut multiplier par 7 (respectivement 10) la vitesse de compression en obtenant un ratio de compression de 50.5\% (respectivement 62.1\%).
+
+\begin{figure}[htbp]
+	\centering
+	\includegraphics[width=0.5\linewidth]{img/compression_tools.pdf}
+	\caption{Comparaison d'outils de compression \cite{lzbench}}
+	\label{fig:compression/tools}
+\end{figure}
 
 De manière similaire, le passage à l'échelle n'est mesuré que pour des tailles de problèmes tenant en mémoire. Au delà d'une taille de population supérieure à $512 \times 512$ et d'un génome de taille supérieure à 50000 gènes, la taille des structures de données dépasse la capacité des 32 GB de RAM, et la mesure des temps d'exécution serait influencée par la vitesse du disque utilisé en swap.
 
@@ -66,8 +73,9 @@ Chaque boucle itérant sur l'ensemble des organismes de la simulation est parall
 
 Ces deux observations suggèrent que la charge de calcul est répartie de manière uniforme sur l'ensemble de la population, et qu'il sera donc plus performant de diviser le traitement en chunks de taille égale plutot que d'opter pour des stratégies de scheduling dynamiques ou guidées qui nécéssiteraient un overhead inutile dans ce cas particulier.
 
-\begin{figure}
-	\includegraphics[width=\linewidth]{img/benchmark_omp_static.pdf}
+\begin{figure}[htbp]
+	\centering
+	\includegraphics[width=0.7\linewidth]{img/benchmark_omp_static.pdf}
 	\caption{Benchmarks de la parallélisation du modèle biologique à l'aide d'OpenMP}
 	\label{fig:benchmarks/omp}
 \end{figure}
@@ -76,19 +84,31 @@ Sur la figure \ref{fig:benchmarks/omp}, la première observation qui peut être 
 
 Ce passage à l'échelle est mis en évidence sur la figure \ref{fig:speedup/omp}, qui visualise l'agrégation des speedups des différentes tailles de problème pour un nombre croissant de threads. Ce speedup $S$ est défini par $ S_N = \frac{t_1}{t_N} $, où $N$ représente le nombre de threads et $t$ le temps d'exécution.
 
-\begin{figure}
+\begin{figure}[htbp]
 	\centering
 	\includegraphics[width=0.5\linewidth]{img/speedup.pdf}
 	\caption{Speedup de la parallélisation du modèle biologique à l'aide d'OpenMP}
 	\label{fig:speedup/omp}
 \end{figure}
 
-On remarque une accélération d'un facteur de 5 pour une multiplication par 8 du nombre de threads.
+On remarque une accélération d'un facteur de 5 pour une multiplication par 8 du nombre de threads. Cette accélération n'est pas linéairement proportionnelle au nombre de threads car le code contient des parties intrinsèquement séquentielles qui ne peuvent être parallélisées. Ce phénomène a été théorisé par Amdahl \cite{amdahl2007validity} et est connu aujourd'hui sous le nom de loi d'Amdahl.
 
 \section{Version GPU}
 
-Divergence \citep{nvidia/branching}
+Dans cette partie, on étudie l'optimisation la version GPU du code d'Aevol. Le processeur utilisé est un Intel Core i7-9700 avec 16GB de RAM, le code est compilé à l'aide de CMake 3.13.14, g++ 8.3.0 et nvcc 9.2.
 
+\subsection{Analyse}
+
+De même que pour la version CPU, on analyse le comportement du programme en profilant son exécution. Le profiler NVVP nous indique que le kernel \textit{evaluate\_population} occupe 99.7\% du temps d'exécution. On observe sur la figure \ref{fig:kernel/timings} la logarithme du temps d'exécution moyen de chaque kernel constituant le modèle.
+
+\begin{figure}[htpb]
+	\centering
+	\includegraphics[width=0.7\linewidth]{img/kernel_timings.pdf}
+	\caption{Logarithme du temps d'exécution moyen de chaque kernel}
+	\label{fig:kernel/timings}
+\end{figure}
+
+Ce temps d'exécution important s'explique principalement par le haut degré de divergence dans le code de ce kernel. En effet, certaines parties du kernel sont systématiquement exécutées par un seul thread dans chaque warp, ce qui augmente significativement nombre d'instructions devant être exécutées par chaque warp \cite{nvidia/branching}.
 
 
 \bibliographystyle{unsrtnat}
