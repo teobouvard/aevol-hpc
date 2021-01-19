@@ -3,6 +3,7 @@
 build*
 experiments
 stats
+ignore
 presentation/slides.pdf
 *.gz
 *.zae

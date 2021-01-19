@@ -47,7 +47,7 @@ Toutes les étapes de ce modèle sont indépendantes pour chaque organisme sauf 
 
 \subsubsection*{Échange de population}
 
-Lorsque de la phase d'échange des population d'un pas de temps au suivant, il est plus efficace d'échanger les pointeurs que de copier les éléments du tableau dans une boucle.
+Lorsque de la phase d'échange des population d'un pas de temps au suivant, il peut être plus performat d'échanger les pointeurs que de copier les éléments du tableau dans une boucle.
 
 \subsubsection*{Latence du disque}
 
@@ -67,6 +67,8 @@ Dans l'optique de mesurer uniquement l'optimisation de la performance du modèle
 \end{figure}
 
 De manière similaire, le passage à l'échelle n'est mesuré que pour des tailles de problèmes tenant en mémoire. Au delà d'une taille de population supérieure à $512 \times 512$ et d'un génome de taille supérieure à 50000 gènes, la taille des structures de données dépasse la capacité des 32 GB de RAM, et la mesure des temps d'exécution serait influencée par la vitesse du disque utilisé en swap.
+
+\subsubsection{Parallélisation du modèle}
 
 Chaque boucle itérant sur l'ensemble des organismes de la simulation est parallélisée à l'aide d'une directive \textit{omp parallel for}, en utilisant un scheduling statique. Ce choix de scheduling provient de l'observation de la répartition des charges de calcul sur les différents organismes.
 
@@ -103,6 +105,25 @@ $$ S = s + \frac{p}{n} $$
 où $s$ représente le temps nécéssaire à l'exécution de la partie séquentielle du code, $p$ le temps nécessaire à l'exécution de la partie parallèle et $n$ le nombre de threads utilisés.
 
 Ce phénomène a été théorisé par Amdahl \cite{amdahl2007validity} et est connu aujourd'hui sous le nom de loi d'Amdahl.
+
+\subsubsection{Échange de population}
+
+La figure \ref{fig:swap/strat} montre la distribution du temps par époque pour deux stratégies d'échange de population.
+La première stratégie \textit{for\_swap} consiste à itérer sur les organismes de la population et d'échanger les génomes de la génération $n$ et $n-1$.
+La seconde stratégie \textit{pointer\_swap} consiste à échanger directement les pointeurs sur les populations de la génération $n$ et $n-1$.
+On suppose que la taille du génome ainsi que celle de la population peuvent avoir une influence sur la performance de cette optimisation, ainsi la figure \ref{fig:swap/strat} présente les temps d'exécution pour le nombre total de gènes, défini par
+
+$$ n_{genes} = n_{organismes} \times taille_{genome} $$
+
+On observe que l'échange de pointeur est en général moins performant que la boucle d'échange.
+L'hypothèse émise est que le compilateur est capable d'optimiser la boucle d'échange de la stratégie \textit{for\_swap} pour que celle-ci soit
+
+\begin{figure}[htbp]
+	\centering
+	\includegraphics[width=0.6\linewidth]{img/swap_strategies.pdf}
+	\caption{Stratégies d'échange de population}
+	\label{fig:swap/strat}
+\end{figure}
 
 \section{Version GPU}
 
