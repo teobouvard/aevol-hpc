@@ -389,12 +389,18 @@ void ExpManager::run_a_step() {
   // Swap Population
   // we use a static schedule as all iterations do the same 2 operations so
   // processing time should be ~equal
-#pragma omp parallel for schedule(static)
-  for (int indiv_id = 0; indiv_id < nb_indivs_; indiv_id++) {
-    prev_internal_organisms_[indiv_id] = internal_organisms_[indiv_id];
-    internal_organisms_[indiv_id] = nullptr;
-  }
+// #pragma omp parallel for schedule(static)
+  // for (int indiv_id = 0; indiv_id < nb_indivs_; indiv_id++) {
+    // prev_internal_organisms_[indiv_id] = internal_organisms_[indiv_id];
+    // internal_organisms_[indiv_id] = nullptr;
+  // }
 
+  // swap pointers rather than explicit copy
+  // std::swap(prev_internal_organisms_, internal_organisms_);
+  auto tmp = prev_internal_organisms_;
+  prev_internal_organisms_ = internal_organisms_;
+  internal_organisms_ = tmp;
+  
   // Search for the best
   double best_fitness = prev_internal_organisms_[0]->fitness;
   int idx_best = 0;

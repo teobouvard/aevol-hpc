@@ -3,9 +3,6 @@ project(micro_aevol)
 
 set(CMAKE_CXX_STANDARD 14)
 
-# more warnings 
-# can't use -Werror because Threefry is full of garbage
-add_compile_options(-Wall -Wextra -pedantic)
 
 if ( DO_TRACES )
     add_definitions(-DTRACES)
@@ -26,6 +23,11 @@ if ( USE_CUDA )
     else()
         message(FATAL_ERROR "No CUDA support found")
     endif()
+else()
+    # more warnings 
+    # can't use -Werror because Threefry is full of garbage
+    # can't use these with old nvcc
+    add_compile_options(-Wall -Wextra -pedantic)
 endif ( USE_CUDA )
 
 if ( USE_OMP )

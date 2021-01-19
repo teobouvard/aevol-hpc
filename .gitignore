@@ -1,6 +1,6 @@
 .vscode
 .ipynb_checkpoints
-build
+build*
 experiments
 stats
 presentation/slides.pdf
