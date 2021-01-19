@@ -33,7 +33,7 @@ Dans cette partie, on étudie l'optimisation la version CPU du code d'Aevol. Le 
 
 Afin de se familiariser avec le code, il est intéressant de profiler son exécution. Cela permet d'identifier la structure globale du programme ainsi que son chemin critique.
 
-\begin{figure}
+\begin{figure}[htpb]
 	\includegraphics[width=\linewidth]{img/profile_aevol.pdf}
 	\caption{Profilage de l'application avec les paramètres par défaut à l'aide de \textit{perf}}
 \end{figure}
@@ -44,6 +44,10 @@ Dans cette fonction, les différentes étapes du modèle biologique sont exécut
 \subsubsection*{Parallélisation du modèle}
 
 Toutes les étapes de ce modèle sont indépendantes pour chaque organisme sauf l'étape de sélection qui requiert la lecture de l'état des organismes voisins sur la grille. Une optimisation naturelle est donc de paralléliser le traitement de chaque organisme\label{parallel/orga}.
+
+\subsubsection*{Échange de population}
+
+Lorsque de la phase d'échange des population d'un pas de temps au suivant, il est plus efficace d'échanger les pointeurs que de copier les éléments du tableau dans une boucle.
 
 \subsubsection*{Latence du disque}
 
@@ -58,7 +62,7 @@ Dans l'optique de mesurer uniquement l'optimisation de la performance du modèle
 \begin{figure}[htbp]
 	\centering
 	\includegraphics[width=0.5\linewidth]{img/compression_tools.pdf}
-	\caption{Comparaison d'outils de compression \cite{lzbench}}
+	\caption{Comparaison d'outils de compression sur le corpus Silesia \cite{lzbench}}
 	\label{fig:compression/tools}
 \end{figure}
 
@@ -82,7 +86,8 @@ Ces deux observations suggèrent que la charge de calcul est répartie de maniè
 
 Sur la figure \ref{fig:benchmarks/omp}, la première observation qui peut être réalisée est que toutes choses étant égales par ailleurs, le temps d'éxécution du programme augmente avec le taux de mutation. Cela s'explique par la phase d'évaluation qui n'est effectuée qu'en cas de mutation. On observe aussi un passage à l'échelle fort de cette parallélisation, car le temps d'exécution est inversement proportionnel au nombre de threads utilisés.
 
-Ce passage à l'échelle est mis en évidence sur la figure \ref{fig:speedup/omp}, qui visualise l'agrégation des speedups des différentes tailles de problème pour un nombre croissant de threads. Ce speedup $S$ est défini par $ S_N = \frac{t_1}{t_N} $, où $N$ représente le nombre de threads et $t$ le temps d'exécution.
+Ce passage à l'échelle est mis en évidence sur la figure \ref{fig:speedup/omp}, qui visualise l'agrégation des speedups des différentes tailles de problème pour un nombre croissant de threads.
+Ce speedup $S$ est défini par $ S_N = \frac{t_1}{t_N} $, où $N$ représente le nombre de threads et $t$ le temps d'exécution.
 
 \begin{figure}[htbp]
 	\centering
@@ -91,7 +96,13 @@ Ce passage à l'échelle est mis en évidence sur la figure \ref{fig:speedup/omp
 	\label{fig:speedup/omp}
 \end{figure}
 
-On remarque une accélération d'un facteur de 5 pour une multiplication par 8 du nombre de threads. Cette accélération n'est pas linéairement proportionnelle au nombre de threads car le code contient des parties intrinsèquement séquentielles qui ne peuvent être parallélisées. Ce phénomène a été théorisé par Amdahl \cite{amdahl2007validity} et est connu aujourd'hui sous le nom de loi d'Amdahl.
+On remarque une accélération d'un facteur de 5 pour une multiplication par 8 du nombre de threads. Cette accélération n'est pas linéairement proportionnelle au nombre de threads car le code contient des parties intrinsèquement séquentielles qui ne peuvent être parallélisées. On observe plutôt un speedup de la forme
+
+$$ S = s + \frac{p}{n} $$
+
+où $s$ représente le temps nécéssaire à l'exécution de la partie séquentielle du code, $p$ le temps nécessaire à l'exécution de la partie parallèle et $n$ le nombre de threads utilisés.
+
+Ce phénomène a été théorisé par Amdahl \cite{amdahl2007validity} et est connu aujourd'hui sous le nom de loi d'Amdahl.
 
 \section{Version GPU}
 
