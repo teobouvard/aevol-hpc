@@ -7,3 +7,4 @@ ignore
 presentation/slides.pdf
 *.gz
 *.zae
+*.pyc
