@@ -28,8 +28,7 @@ Micro Aevol est une version réduite du modèle biologique Aevol \cite{aevol}, d
 \section{Version CPU}
 
 Dans cette partie, on étudie l'optimisation la version CPU du code d'Aevol.
-Pour le benchmark de \textit{strong scaling}, le processeur utilisé est un AMD Ryzen 7 3700X avec 32GB de RAM, le code est compilé à l'aide de CMake 3.19.1, g++ 10.2.0 et OpenMP 4.5 (201511)
-Pour le benchmark de \textit{weak scaling}, le processeur utilisé est un Intel Core i7-9700 avec 16GB de RAM, le code est compilé à l'aide de CMake 3.13.14, g++ 8.3.0 et OpenMP.
+Le processeur utilisé est un AMD Ryzen 7 3700X avec 32GB de RAM, le code est compilé à l'aide de CMake 3.19.1, g++ 10.2.0 et OpenMP 4.5 (201511)
 
 \subsection{Analyse}
 
@@ -79,7 +78,17 @@ Chaque boucle itérant sur l'ensemble des organismes de la simulation est parall
 	\item La phase d'évaluation n'est effectuée que si l'organisme a subi une mutation, ce qui est lié à un processus aléatoire. De plus, cette phase est d'autant plus coûteuse que le nombre de mutations subies est élevé. Cependant, chaque organisme est soumis au même processus aléatoire de mutation, ce qui répartit les mutations de manière uniforme dans la population.
 \end{itemize}
 
+
+\begin{figure}[htb]
+	\centering
+	\includegraphics[width=0.5\linewidth]{img/scheduling_strategies.pdf}
+	\caption{Benchmarks des différentes stratégies de scheduling d'OpenMP}
+	\label{fig:benchmarks/scheduling}
+\end{figure}
+
 Ces deux observations suggèrent que la charge de calcul est répartie de manière uniforme sur l'ensemble de la population, et qu'il sera donc plus performant de diviser le traitement en chunks de taille égale plutôt que d'opter pour des stratégies de scheduling dynamiques ou guidées qui nécessiteraient un overhead inutile dans ce cas particulier.
+
+Cette hypothèse est confirmée par le benchmark illustré en figure \ref{fig:benchmarks/scheduling}. On observe que tous les quartiles de temps moyen par époque sont inférieurs lorsqu'on utilise une stratégie de scheduling statique. La seconde stratégie la plus performante est celle du scheduling guidée, suivie du scheduling dynamique.
 
 \begin{figure}[htb]
 	\centering

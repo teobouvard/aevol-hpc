@@ -242,8 +242,9 @@ int main(int argc, char *argv[]) {
 
   auto duration =
       std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
-  printf("%s,%d,%d,%f,%d,%ld\n", std::getenv("OMP_NUM_THREADS"), height, width,
-         mutation_rate, genome_size, duration);
+  printf("%s,%s,%d,%d,%f,%d,%ld\n", std::getenv("OMP_SCHEDULE"),
+         std::getenv("OMP_NUM_THREADS"), height, width, mutation_rate,
+         genome_size, duration);
 
   delete exp_manager;
 
