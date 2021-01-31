@@ -40,7 +40,7 @@ Afin de se familiariser avec le code, il est intéressant de profiler son exécu
 \end{figure}
 
 Dans le cas d'Aevol, on remarque que la fonction \textit{run\_a\_step} est exécutée pour chaque pas de temps de \textit{run\_evolution}, dont le nombre d'itérations est spécifié par l'argument \textit{n\_steps}.
-Dans cette fonction, les différentes étapes du modèle biologique sont exécutées pour chaque organisme.
+Dans cette fonction, les différentes étapes du modèle biologique sont exécutées pour chaque organisme. Parmis ces étapes, on observe \textit{Organism::compute\_RNA} est celle qui cumule le plus de temps de calcul, avec 29\% du temps d'exécution passé dans cette fonction et ses descendants.
 
 \subsubsection*{Parallélisation du modèle}
 
@@ -54,11 +54,11 @@ Pour effectuer la phase d'échange des populations lors du passage d'un pas de t
 
 Une autre simple optimisation est de limiter les appels à \textit{printf}, qui ralentissent l'exécution de manière significative lorsque ces derniers sont très fréquents. En effet, en utilisant les arguments par défaut on diminue de moitié le temps d'exécution en redirigeant la sortie standard ainsi que la sortie d'erreur vers \textit{/dev/null}. Bien évidemment, cette optimisation n'est pas aussi significative lorsque l'on utilise des tailles de problèmes plus élevées, mais il est sage d'éviter des appels systèmes coûteux lorsqu'ils ne sont pas nécessaires. Une alternative à la redirection des streams serait d'ajouter un argument permettant de contrôler la verbosité du programme, et ainsi s'affranchir du coût de tous ces appels systèmes lors d'une exécution en mode silencieux.
 
-De manière similaire, les écritures dans les fichiers de statistiques invoquant \textit{std::endl} ou \textit{std::flush} imposent la synchronisation des flux de sortie, ce qui peut avoir un coût d'appel système assez élevé lié à la lenteur de l'écriture sur disque. Une meilleure solution serait de stocker les statistiques en mémoire jusqu'au point de backup afin de les écrire dans des fichiers d'un seul coup, ce qui améliorerait le buffering déjà proposé par l'OS.
+De manière similaire, les écritures dans les fichiers de statistiques invoquant \textit{std::endl} ou \textit{std::flush} imposent la synchronisation des flux de sortie, ce qui peut avoir un coût d'appel système assez élevé lié à la lenteur de l'écriture sur disque. Une meilleure solution serait de stocker les statistiques en mémoire jusqu'au point de backup afin de les écrire dans des fichiers d'un seul coup, ce qui permettrait d'améliorer le buffering déjà proposé par l'OS.
 
 \subsection{Implémentation}
 
-Dans l'optique de mesurer uniquement l'optimisation de la performance du modèle biologique, les benchmarks qui suivent n'incluent pas le temps d'écriture des fichiers de backup. En effet, cette écriture est réalisée par un seul thread et peut nécessiter la compression DEFLATE de plusieurs GB de données à l'aide de zlib, ce qui influe de manière significative sur le temps d'exécution du programme. Cependant, c'est un coût qui n'est pas directement lié au modèle biologique que l'on cherche à optimiser, et qui n'est effectué qu'à chaque point de backup. Si l'on souhaitait optimiser cette partie du programme, il serait utile d'utiliser un algorithme de compression plus performant que DEFLATE tel que \textit{lz4} ou \textit{zstd}. Comme on peut l'observer sur la figure \ref{fig:compression/tools}, l'utilisation de zstd 1.4.3 peut multiplier par 4 la vitesse de compression maximale de zlib tout en améliorant le ratio de compression de 36.4\% à 34.7\%. Si l'on se permet de sacrifier de la mémoire pour gagner en performance, on peut multiplier par 7 (respectivement 10) la vitesse de compression en obtenant un ratio de compression de 50.5\% (respectivement 62.1\%).
+Dans l'optique de mesurer uniquement l'optimisation de la performance du modèle biologique, les benchmarks qui suivent n'incluent pas le temps d'écriture des fichiers de backup. En effet, cette écriture est réalisée par un seul thread et peut nécessiter la compression de plusieurs GB de données à l'aide de zlib, ce qui influe de manière significative sur le temps d'exécution du programme. Cependant, c'est un coût qui n'est pas directement lié au modèle biologique que l'on cherche à optimiser, et qui n'est effectué qu'à chaque point de backup. Si l'on souhaitait optimiser cette partie du programme, il pourrait s'avérer utile d'utiliser un algorithme de compression plus performant que DEFLATE tel que \textit{lz4} ou \textit{zstd}. Comme on peut l'observer sur la figure \ref{fig:compression/tools}, l'utilisation de zstd 1.4.3 peut multiplier par 4 la vitesse de compression maximale de zlib tout en améliorant le ratio de compression de 36.4\% à 34.7\%. Si l'on se permet de sacrifier de la mémoire pour gagner en performance, l'utilisation de \textit{lz4} permet de multiplier par 7 (respectivement 10) la vitesse de compression en obtenant un ratio de compression de 50.5\% (respectivement 62.1\%).
 
 \begin{figure}[htb]
 	\centering
@@ -67,28 +67,29 @@ Dans l'optique de mesurer uniquement l'optimisation de la performance du modèle
 	\label{fig:compression/tools}
 \end{figure}
 
-De manière similaire, le passage à l'échelle n'est mesuré que pour des tailles de problèmes tenant en mémoire. Au delà d'une taille de population supérieure à $512 \times 512$ et d'un génome de taille supérieure à 50000 gènes, la taille des structures de données dépasse la capacité des 32 GB de RAM, et la mesure des temps d'exécution serait influencée par la vitesse du disque utilisé en swap.
+De manière similaire, le passage à l'échelle n'est mesuré que pour des tailles de problèmes tenant en mémoire. Au delà d'une taille de population supérieure à $512 \times 512$ et d'un génome comprenant plus de 50000 gènes, la taille des structures de données dépasse la capacité des 32 GB de RAM, et la mesure des temps d'exécution serait influencée par la vitesse du disque utilisé en swap.
 
 \subsubsection{Parallélisation du modèle}
 
-Chaque boucle itérant sur l'ensemble des organismes de la simulation est parallélisée à l'aide d'une directive \textit{omp parallel for}, en utilisant un scheduling statique. Ce choix de scheduling provient de l'observation de la répartition des charges de calcul sur les différents organismes.
+Chaque boucle itérant sur l'ensemble des organismes de la simulation est parallélisée à l'aide d'une directive \textit{omp parallel for}. On cherche tout d'abord à déterminer la stratégie de scheduling optimale pour la paraléllisation de ces boucles. Pour cela, on mesure le temps d'exécution moyen par pas de temps, pour différentes tailles de population et de génomes, à l'aide d'un nombre de threads allant de 1 à 8. Pour rendre compte de la variation du nombre d'individus ainsi que de la taille de génome sur une variable unidimensionnelle, on introduit la variable du nombre total de gènes, définie de la manière suivante.
 
-\begin{itemize}
-	\item Lors des phases de sélection, de swap de population et de recherche de meilleur individu, les calculs sont identiques pour chaque organisme.
-	\item La phase d'évaluation n'est effectuée que si l'organisme a subi une mutation, ce qui est lié à un processus aléatoire. De plus, cette phase est d'autant plus coûteuse que le nombre de mutations subies est élevé. Cependant, chaque organisme est soumis au même processus aléatoire de mutation, ce qui répartit les mutations de manière uniforme dans la population.
-\end{itemize}
-
+$$ n_{genes} = n_{organismes} \times taille_{genome} $$
 
 \begin{figure}[htb]
 	\centering
-	\includegraphics[width=0.5\linewidth]{img/scheduling_strategies.pdf}
+	\includegraphics[width=\linewidth]{img/scheduling_strategies_n_genes_by_n_threads.pdf}
 	\caption{Benchmarks des différentes stratégies de scheduling d'OpenMP}
 	\label{fig:benchmarks/scheduling}
 \end{figure}
 
-Ces deux observations suggèrent que la charge de calcul est répartie de manière uniforme sur l'ensemble de la population, et qu'il sera donc plus performant de diviser le traitement en chunks de taille égale plutôt que d'opter pour des stratégies de scheduling dynamiques ou guidées qui nécessiteraient un overhead inutile dans ce cas particulier.
+Sur la figure \ref{fig:benchmarks/scheduling}, on observe que les meilleurs temps moyens par époque sont obtenus lorsqu'on utilise une stratégie de scheduling statique. La seconde stratégie la plus performante est celle du scheduling guidée, suivie du scheduling dynamique. Ce résultat peut être expliqué en observant la répartition des charges de calcul sur les différents organismes.
 
-Cette hypothèse est confirmée par le benchmark illustré en figure \ref{fig:benchmarks/scheduling}. On observe que tous les quartiles de temps moyen par époque sont inférieurs lorsqu'on utilise une stratégie de scheduling statique. La seconde stratégie la plus performante est celle du scheduling guidée, suivie du scheduling dynamique.
+\begin{itemize}
+	\item Lors des phases de sélection, de swap de population et de recherche de meilleur individu, les calculs sont identiques pour chaque organisme.
+	\item La phase d'évaluation n'est effectuée que si l'organisme a subi une mutation, ce qui est lié à un processus aléatoire. De plus, cette phase est d'autant plus coûteuse que le nombre de mutations subies est élevé. Cependant, chaque organisme est soumis au même processus aléatoire de mutation.
+\end{itemize}
+
+Ces deux observations suggèrent que la charge de calcul est répartie de manière uniforme sur l'ensemble de la population à chaque époque, et qu'il sera donc plus performant de diviser le traitement en chunks de grande taille pour maximiser l'occupation des processeurs plutôt que d'opter pour des stratégies de scheduling dynamiques ou guidées dont le load balancing nécessiterait un overhead inutile dans ce cas particulier.
 
 \begin{figure}[htb]
 	\centering
@@ -97,12 +98,22 @@ Cette hypothèse est confirmée par le benchmark illustré en figure \ref{fig:be
 	\label{fig:benchmarks/omp}
 \end{figure}
 
-Sur la figure \ref{fig:benchmarks/omp}, la première observation qui peut être réalisée est que toutes choses étant égales par ailleurs, le temps d'exécution du programme augmente avec le taux de mutation. Cela s'explique par la phase d'évaluation qui n'est effectuée qu'en cas de mutation. On observe que cette stratégie de paraléllisation fonctionne, car le temps d'exécution est inversement proportionnel au nombre de threads utilisés.
+On utilise donc cette stratégie pour le évaluer la performance de la parallélisation du modèle.
+Sur la figure \ref{fig:benchmarks/omp}, la première observation qui peut être réalisée est que toutes choses étant égales par ailleurs, le temps d'exécution du programme augmente avec le taux de mutation. Cela s'explique par la phase coûteuse d'évaluation qui n'est effectuée qu'en cas de mutation. On observe aussi que cette stratégie de paraléllisation fonctionne, car le temps d'exécution est inversement proportionnel au nombre de threads utilisés.
 
 \subsubsection*{Strong scaling}
 
 Le speedup de cette parallélisation est mis en évidence sur la figure \ref{fig:speedup/omp}, qui visualise le gain de temps sur différentes tailles de problèmes pour un nombre croissant de threads.
 Ce speedup $S$ est défini par $ S_n = \frac{t_1}{t_n} $, où $n$ représente le nombre de threads et $t$ le temps d'exécution.
+
+On remarque une accélération d'un facteur de 5 pour une multiplication par 8 du nombre de threads. Cette accélération n'est pas linéairement proportionnelle au nombre de threads car le code contient des parties intrinsèquement séquentielles qui ne peuvent pas être parallélisées. On observe plutôt un speedup de la forme
+
+$$ S = \frac{1}{s + \frac{1-s}{n}} $$
+
+où $s$ représente le temps nécessaire à l'exécution de la partie séquentielle du code, $1-s$ le temps nécessaire à l'exécution de la partie parallèle et $n$ le nombre de threads utilisés.
+
+Ce phénomène a été théorisé par Amdahl \cite{amdahl2007validity} et est connu aujourd'hui sous le nom de loi d'Amdahl.
+Pour chaque valeur des différentes variables, on détermine $s$ à l'aide d'une régression par moindres carrés de la loi d'Amdahl sur les données obtenues lors des benchmarks.
 
 \begin{figure}[htb]
 	\centering
@@ -120,24 +131,15 @@ Ce speedup $S$ est défini par $ S_n = \frac{t_1}{t_n} $, où $n$ représente le
 	\label{fig:speedup/omp}
 \end{figure}
 
-On remarque une accélération d'un facteur de 5 pour une multiplication par 8 du nombre de threads. Cette accélération n'est pas linéairement proportionnelle au nombre de threads car le code contient des parties intrinsèquement séquentielles qui ne peuvent être parallélisées. On observe plutôt un speedup de la forme
-
-$$ S = \frac{1}{s + \frac{1-s}{n}} $$
-
-où $s$ représente le temps nécessaire à l'exécution de la partie séquentielle du code, $1-s$ le temps nécessaire à l'exécution de la partie parallèle et $n$ le nombre de threads utilisés.
-
-Ce phénomène a été théorisé par Amdahl \cite{amdahl2007validity} et est connu aujourd'hui sous le nom de loi d'Amdahl.
-Pour chaque valeur des différentes variables, on détermine $s$ à l'aide d'une régression par moindres carrés de la loi d'Amdahl sur les données obtenues lors des benchmarks.
-
 Ces valeurs de $s$ nous permettent de déterminer le speedup théorique maximal pour les tailles de problèmes étudiées. Par exemple, pour un génome comportant 50000 gènes, on peut calculer
 
-$$ S_{max} = \lim_{n\to\infty} \frac{1}{0.06 + \frac{0.94}{n}} = 16.7 $$
+$$ S_{max} = \lim_{n\to\infty} \frac{1}{0.07 + \frac{0.93}{n}} = 14.3 $$
 
-cependant, si l'on fixe la taille du génome à 5000 gènes, on obtient un speedup théorique maximal de
+cependant, si l'on fixe la taille du génome à 500 gènes, on obtient un speedup théorique maximal de
 
 $$ S_{max} = \lim_{n\to\infty} \frac{1}{0.15 + \frac{0.85}{n}} = 6.7 $$
 
-On en conclue que pour obtenir un speedup maximal en utilisant cette parallélisation, il est nécessaire d'utiliser des tailles de génome et de population les plus grandes possibles. Cependant, on en conclue aussi que plus le taux de mutation est élevé, moins la parallélisation est efficace, ce qui indiquerait la nécessité d'étudier une autre stratégie de parallélisation pour la méthode \textit{evaluate} pour des taux de mutation élevés.
+On en conclue que pour obtenir un speedup maximal en utilisant cette parallélisation, il est nécessaire d'utiliser des tailles de génome et de population les plus grandes possibles. On en conclue aussi que plus le taux de mutation est élevé, plus cette parallélisation est efficace.
 
 \subsubsection*{Weak scaling}
 
@@ -158,11 +160,9 @@ $$ S' = s + (1 - s) \times n$$
 	\label{fig:scaled-speedup/omp}
 \end{figure}
 
-Le scaled speedup quantifie le temps qu'il faudrait à un seul thread pour exécuter le programme que l'on exécute à l'aide de plusieurs threads. La figure \ref{fig:scaled-speedup/omp} montre l'évolution de ce scaled speedup lorsque l'on fixe différentes variables. Sur cette figure, on observe la tendance linéaire de la loi de Gustafson jusqu'à 6 threads, mais on remarque un effondrement du speedup lors de l'utilisation de 8 threads.
+Le scaled speedup quantifie le temps qu'il faudrait à un seul thread pour exécuter le programme que l'on exécute à l'aide de plusieurs threads. La figure \ref{fig:scaled-speedup/omp} montre l'évolution de ce scaled speedup lorsque l'on fixe la taille du génome et le taux de mutation. Sur cette figure, on observe la tendance linéaire de la loi de Gustafson jusqu'à 6 threads, mais on remarque un ralentissement du speedup lors de l'utilisation de 8 threads.
 
 Contrairement à la loi d'Amdahl qui restreint le speedup maximal atteignable pour une taille de problème fixée, la loi de Gustafson nous fournit une métrique plus encourageante qui ne limite pas le speedup théorique, car l'ajout de nouveaux threads nous permettra de résoudre des problèmes toujours plus grands.
-
-% Cette perte d'efficacité à 8 threads peut être liée à une saturation du CPU utilisé, qui possède 8 coeurs logiques. Pour rappel, les résultats de ce benchmark ne sont pas comparables à ceux effectués pour le strong scaling car ils n'ont pas été effectués sur la même machine. La machine utilisé pour réaliser ce benchmark est partagée par plusieurs utilisateurs (tandis que l'autre ne l'était pas) et l'OS a peut-être limité le temps de scheduling disponible pour ce benchmark pour permettre à d'autres programmes d'utiliser du temps CPU.
 
 La figure \ref{fig:speedup-models} offre une comparaison de l'approche d'Amdahl et de Gustafson pour quantifier le speedup d'un programme parallélisé.
 
@@ -185,9 +185,7 @@ La figure \ref{fig:speedup-models} offre une comparaison de l'approche d'Amdahl 
 La figure \ref{fig:swap/strat} montre la distribution du temps par époque pour deux stratégies d'échange de population.
 La première stratégie \textit{for\_swap} consiste à itérer sur les organismes de la population et d'échanger les génomes de la génération $n$ et $n-1$.
 La seconde stratégie \textit{pointer\_swap} consiste à échanger directement les pointeurs sur les populations de la génération $n$ et $n-1$.
-On suppose que la taille du génome ainsi que celle de la population peuvent avoir une influence sur la performance de cette optimisation, ainsi la figure \ref{fig:swap/strat} présente les temps d'exécution pour le nombre total de gènes, défini par
-
-$$ n_{genes} = n_{organismes} \times taille_{genome} $$
+On suppose que la taille du génome ainsi que celle de la population peuvent avoir une influence sur la performance de cette optimisation, ainsi la figure \ref{fig:swap/strat} présente les temps d'exécution pour le nombre total de gènes.
 
 \begin{figure}[htb]
 	\centering
@@ -197,7 +195,7 @@ $$ n_{genes} = n_{organismes} \times taille_{genome} $$
 \end{figure}
 
 Bien que la meilleure performance par taille de problème soit généralement atteinte par l'échange de pointeurs, on observe que la performance médiane de cette stratégie est statistiquement moins bonne que celle de la boucle d'échange.
-L'hypothèse émise est que le compilateur est capable de fournir une optimisation de la boucle d'échange au moins aussi bonne que la stratégie du \textit{pointer\_swap}.
+L'hypothèse émise pour expliquer ce résultat est que le compilateur est capable de fournir une optimisation de la boucle d'échange au moins aussi bonne que la stratégie du \textit{pointer\_swap}.
 
 \section{Version GPU}
 
@@ -205,7 +203,7 @@ Dans cette partie, on étudie l'optimisation la version GPU du code d'Aevol. Le 
 
 \subsection{Analyse}
 
-De même que pour la version CPU, on analyse le comportement du programme en profilant son exécution. Le profiler NVVP nous indique que le kernel \textit{evaluate\_population} occupe 99.7\% du temps d'exécution. On observe sur la figure \ref{fig:kernel/timings} la logarithme du temps d'exécution moyen de chaque kernel constituant le modèle.
+De même que pour la version CPU, on analyse le comportement du programme en profilant son exécution. Le profiler NVVP nous indique que le kernel \textit{evaluate\_population} occupe 99.7\% du temps d'exécution. On observe sur la figure \ref{fig:kernel/timings} le temps d'exécution moyen de chaque kernel constituant le modèle, sur une échelle de temps logarithmique.
 
 \begin{figure}[htp]
 	\centering
@@ -216,7 +214,11 @@ De même que pour la version CPU, on analyse le comportement du programme en pro
 
 Ce temps d'exécution important s'explique principalement par le haut degré de divergence dans le code de ce kernel. En effet, certaines parties du kernel sont systématiquement exécutées par un seul thread dans chaque warp, ce qui augmente significativement le nombre d'instructions devant être exécutées par chaque warp \cite{nvidia/branching}.
 
-Afin de profiler davantage les kernels les plus couteux pour identifier plus précisément les phases de divergence inter-warp, il était nécessaire de bénéficier des privilèges administrateur, qui ne nous sont pas accordés sur les machines du département.
+Afin de profiler davantage les kernels les plus couteux pour identifier plus précisément les phases de divergence inter-warp, il est nécessaire de bénéficier des privilèges administrateur, qui ne nous sont pas accordés sur les machines du département.
+
+\subsection{Conclusion}
+
+La parallélisation mise en place pour la version CPU d'Aevol permet d'obtenir un speedup satisfaisant pour une introduction de complexité minimale à l'aide d'OpenMP. Ce speedup serait d'autant plus intéressant si la version GPU exécutait le traitement de chaque organisme de manière indépendante, mais l'architecture de CUDA limite la facilité de parallélisattion pour un processus qui comprend une phase d'aléatoire et donc un degré de divergence élevé.
 
 \bibliographystyle{unsrtnat}
 \bibliography{report}
